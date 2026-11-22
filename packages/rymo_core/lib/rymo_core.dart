@@ -2,6 +2,7 @@
 library;
 
 export 'src/engine.dart';
+export 'src/notebook/notebook.dart';
 export 'src/pack/pack_reader.dart';
 export 'src/pack/pack_writer.dart';
 export 'src/pack/schema.dart';

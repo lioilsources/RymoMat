@@ -4,7 +4,7 @@ Editor básní, který při psaní nabízí rýmy. Rýmy hledá podle **výslovn
 a k nim ukazuje **doložené rýmy** — dvojice, které skuteční básníci zrýmovali, s ukázkou veršů.
 Běží offline, bez účtu a bez sledování. První jazyk: čeština.
 
-Stav: **M0** (engine a data, bez UI) — viz [docs/M0_REPORT.md](docs/M0_REPORT.md).
+Stav: **M1** ve vývoji — engine a data ([M0](docs/M0_REPORT.md)), aplikace se Sbírkami, Editorem a Rýmovníkem ([M1](docs/M1_REPORT.md)).
 
 ## Jak to funguje
 
@@ -22,6 +22,8 @@ $ dart run rymo_core:rhymes noc
 | Složka | Co |
 |---|---|
 | `packages/rymo_core` | engine v čistém Dartu (G2P, klíče, pack, `RhymeEngine`) |
+| `packages/rymo_editor` | Flutter widgety: pole verše, lišta rýmů, přehled rýmů |
+| `app` | aplikace RymoMat (iOS, Android) |
 | `pipeline` | Go nástroj `rymo`: stažení a normalizace korpusů, lexikon, páry, release |
 | `docs` | zprávy z milníků a evaluace |
 | `Prompts` | plán projektu a referenční prototyp |
@@ -35,6 +37,13 @@ cd pipeline && go build -o ../run/rymo ./cmd/rymo && cd ..
 run/rymo fetch kcv && run/rymo fetch freqwords-cs
 run/rymo normalize kcv && run/rymo lexicon cs && run/rymo pairs cs
 run/rymo pack cs && run/rymo eval cs && run/rymo release cs
+```
+
+## Spuštění aplikace
+
+```
+run/rymo release cs && cp work/release/cs-v1.zip app/assets/packs/
+cd app && flutter run --profile
 ```
 
 ## Data a licence

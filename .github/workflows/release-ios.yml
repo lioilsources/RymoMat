@@ -1,0 +1,196 @@
+name: Release iOS
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    name: Build & Release iOS
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.50.x'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Set version from tag
+        working-directory: app
+        run: |
+          # The release tag is the version: v1.2.3 or v1.2.3-beta -> 1.2.3.
+          # Reading it from pubspec.yaml alone shipped every tag as whatever
+          # version the file still said. Manual runs (no tag) keep pubspec's.
+          BASE=$(grep '^version:' pubspec.yaml | sed -E 's/^version: ([0-9.]+).*/\1/')
+          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${TAG%%-*}"
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            BASE="$TAG"
+          fi
+          NEW="${BASE}+${{ github.run_number }}"
+          sed -i.bak -E "s/^version: .*/version: ${NEW}/" pubspec.yaml
+          rm -f pubspec.yaml.bak
+          echo "Build version: ${NEW}"
+
+      - name: Install CocoaPods dependencies
+        working-directory: app/ios
+        run: |
+          # An app without iOS plugins has no Podfile (Flutter only writes one
+          # when a plugin needs CocoaPods) — pod install would fail on it.
+          # --repo-update: the runner's spec repo can predate a pod the lock
+          # asks for ("None of your spec sources contain a spec satisfying").
+          if [ -f Podfile ]; then pod install --repo-update; else echo "No Podfile (no iOS plugins) — skipping"; fi
+
+      - name: Import signing certificate
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          echo -n "$CERTIFICATE_P12_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security import $RUNNER_TEMP/certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          echo "=== Imported certificates ==="
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+
+      - name: Install provisioning profile
+        env:
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+        run: |
+          PP_PATH=$RUNNER_TEMP/profile.mobileprovision
+          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode > $PP_PATH
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          DECODED=$(security cms -D -i "$PP_PATH")
+          UUID=$(echo "$DECODED" | plutil -extract UUID raw -)
+          PROFILE_NAME=$(echo "$DECODED" | plutil -extract Name raw -)
+          BUNDLE_ID=$(echo "$DECODED" | plutil -extract Entitlements.application-identifier raw - | sed 's/^[^.]*\.//')
+          EXPIRY=$(echo "$DECODED" | plutil -extract ExpirationDate raw -)
+          PROFILE_TYPE=$(echo "$DECODED" | plutil -extract ProvisionsAllDevices raw - 2>/dev/null && echo "Enterprise" || (echo "$DECODED" | plutil -extract Entitlements.get-task-allow raw - 2>/dev/null | grep -q true && echo "Development" || echo "Distribution/AppStore"))
+          echo "=== Provisioning profile info ==="
+          echo "Profile name:      $PROFILE_NAME"
+          echo "Profile UUID:      $UUID"
+          echo "Profile bundle ID: $BUNDLE_ID"
+          echo "Profile expires:   $EXPIRY"
+          echo "Profile type:      $PROFILE_TYPE"
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$UUID".mobileprovision
+          echo "PROFILE_NAME=$PROFILE_NAME" >> $GITHUB_ENV
+          echo "PROFILE_UUID=$UUID" >> $GITHUB_ENV
+
+      - name: Inject profile UUID into project
+        run: |
+          # Two expressions cover both quoted ("CI_PROFILE_NAME") and unquoted
+          # (CI_PROFILE_NAME) forms — a single-expression sed double-quotes the
+          # already-quoted placeholder and corrupts the pbxproj ("project damaged").
+          sed -i '' \
+            -e "s/\"CI_PROFILE_NAME\"/\"$PROFILE_UUID\"/g" \
+            -e "s/CI_PROFILE_NAME/\"$PROFILE_UUID\"/g" \
+            app/ios/Runner.xcodeproj/project.pbxproj
+          grep PROVISIONING_PROFILE_SPECIFIER app/ios/Runner.xcodeproj/project.pbxproj
+
+      - name: Build Flutter iOS (no codesign)
+        working-directory: app
+        run: flutter build ios --release --no-codesign
+
+      - name: Archive with manual signing
+        env:
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        working-directory: app
+        run: |
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/Runner.xcarchive \
+            DEVELOPMENT_TEAM=$TEAM_ID
+
+      - name: Export IPA
+        env:
+          TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :teamID $TEAM_ID" app/ios/ExportOptions.plist
+          /usr/libexec/PlistBuddy -c "Set :provisioningProfiles:com.ol1n.rymomat $PROFILE_NAME" app/ios/ExportOptions.plist
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/Runner.xcarchive \
+            -exportOptionsPlist app/ios/ExportOptions.plist \
+            -exportPath $RUNNER_TEMP/ipa
+
+      - name: Upload to TestFlight
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo -n "$API_KEY_BASE64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${API_KEY_ID}.p8
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$(ls $RUNNER_TEMP/ipa/*.ipa)" \
+            --apiKey "$API_KEY_ID" \
+            --apiIssuer "$API_ISSUER_ID"
+
+      - name: Check TestFlight internal group
+        # altool only uploads; without an internal beta group that has access to
+        # all builds nobody gets a TestFlight invite (AstroMat, AlienMatch,
+        # Kitchen, Sample16 on 2026-11-20). Warns, never fails the release.
+        continue-on-error: true
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+        run: |
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleIdentifier" "$RUNNER_TEMP/Runner.xcarchive/Info.plist")
+          python3 - "$BUNDLE_ID" <<'PY'
+          import base64, json, os, subprocess, sys, time, urllib.parse, urllib.request
+          kid, iss, bundle = os.environ["API_KEY_ID"], os.environ["API_ISSUER_ID"], sys.argv[1]
+          key = os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{kid}.p8")
+          b = lambda x: base64.urlsafe_b64encode(x).rstrip(b"=")
+          h = b(json.dumps({"alg": "ES256", "kid": kid, "typ": "JWT"}).encode())
+          c = b(json.dumps({"iss": iss, "iat": int(time.time()), "exp": int(time.time()) + 600, "aud": "appstoreconnect-v1"}).encode())
+          der = subprocess.run(["openssl", "dgst", "-sha256", "-sign", key], input=h + b"." + c, capture_output=True, check=True).stdout
+          i, sig = (2 if der[1] < 0x80 else 3), b""
+          for _ in range(2):
+              n = der[i + 1]; sig += der[i + 2:i + 2 + n].lstrip(b"\0").rjust(32, b"\0"); i += 2 + n
+          tok = (h + b"." + c + b"." + b(sig)).decode()
+          get = lambda p: json.load(urllib.request.urlopen(urllib.request.Request("https://api.appstoreconnect.apple.com" + p, headers={"Authorization": "Bearer " + tok})))
+          app = get("/v1/apps?filter[bundleId]=" + urllib.parse.quote(bundle))["data"][0]["id"]
+          groups = [g["attributes"] for g in get(f"/v1/apps/{app}/betaGroups")["data"]]
+          ok = [g["name"] for g in groups if g["isInternalGroup"] and g.get("hasAccessToAllBuilds")]
+          if ok:
+              print(f"TestFlight internal group(s) with all builds: {', '.join(ok)}")
+          else:
+              print(f"::warning title=No TestFlight testers::{bundle} has no internal beta group with access to all builds, so nobody gets an invite. In App Store Connect: TestFlight -> Internal Testing -> + -> 'Alfa', enable automatic distribution, add testers.")
+          PY
+
+      - name: Upload IPA to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ runner.temp }}/ipa/*.ipa
+          name: RymoMat ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/app-signing.keychain-db 2>/dev/null || true
+          rm -f ~/.appstoreconnect/private_keys/AuthKey_*.p8
