@@ -1,0 +1,54 @@
+# Source registry. license_class: pd | by-sa | nc | unknown.
+# The release gate rejects nc and unknown unless --research is given.
+- id: kcv
+  kind: git
+  url: https://github.com/versotym/corpusCzechVerse
+  lang: cs
+  license: CC BY-SA 4.0
+  license_class: by-sa
+  attribution: >-
+    Korpus českého verše, Ústav pro českou literaturu AV ČR (ucl.cas.cz).
+    Plecháč, P. – Kolár, R. (2015): The Corpus of Czech Verse. Studia Metrica et Poetica 2(1), 107–118.
+    Plecháč, P. (2016): Czech Verse Processing System KVĚTA – Phonetic and Metrical Components. Glottotheory 7(2), 159–174.
+  cite_text: true
+
+# FrequencyWords: code MIT, content CC BY-SA 4.0 (README of the repo, checked 2026-11-22).
+# Derived from OpenSubtitles 2018 (OPUS).
+- id: freqwords-cs
+  kind: file
+  url: https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/cs/cs_50k.txt
+  lang: cs
+  license: CC BY-SA 4.0
+  license_class: by-sa
+  attribution: >-
+    FrequencyWords (Hermit Dave), github.com/hermitdave/FrequencyWords, CC BY-SA 4.0;
+    based on OpenSubtitles 2018 (opus.nlpl.eu).
+  cite_text: false
+
+# Candidates kept out of release packs.
+- id: poetree-fr
+  kind: zenodo
+  url: https://zenodo.org/records/17414036
+  lang: fr
+  license: CC BY-NC-SA 4.0
+  license_class: nc
+  attribution: PoeTree 1.0.0 (French part)
+  cite_text: false
+
+- id: morfflex-cz
+  kind: file
+  url: https://ufal.mff.cuni.cz/morfflex
+  lang: cs
+  license: CC BY-NC-SA 4.0
+  license_class: nc
+  attribution: MorfFlex CZ (ÚFAL MFF UK)
+  cite_text: false
+
+- id: rhymetagger
+  kind: git
+  url: https://github.com/versotym/rhymetagger
+  lang: "*"
+  license: not stated in the repository
+  license_class: unknown
+  attribution: RhymeTagger (ÚČL AV ČR)
+  cite_text: false

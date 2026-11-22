@@ -1,0 +1,25 @@
+# devconv:start
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.jks
+key.properties
+.DS_Store
+.claude/settings.local.json
+CLAUDE.local.md
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+lib/**/secrets.dart
+bin/
+*.test
+*.out
+# devconv:end
+
+# repo-specific
+!packages/*/bin/
+work/
+run/
