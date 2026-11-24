@@ -48,6 +48,8 @@ cd app && flutter run --profile
 
 ## Data a licence
 
+Kód je pod licencí **MIT** (`LICENSE`).
+
 Rhyme pack je odvozený z Korpusu českého verše (Ústav pro českou literaturu AV ČR, CC BY-SA 4.0)
 a frekvenčního seznamu FrequencyWords (CC BY-SA 4.0), proto se šíří pod **CC BY-SA 4.0**
 s atribucí v `ATTRIBUTION.md`. Citace:

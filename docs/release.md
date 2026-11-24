@@ -17,3 +17,9 @@ Pipeline je z repa Distribution (`release-ios.yml`, `release-android.yml`); rele
 6. **Pack v buildu**: `app/assets/packs/cs-v1.zip` je gitignorovaný. Před releasem
    `run/rymo release cs` a zkopírovat zip do `app/assets/packs/`; v CI ho stáhnout
    z release `cs-v1` v repu `lioilsources/rymomat-packs` (krok doplnit, až repo vznikne).
+
+## Podpisový tým iOS
+
+Team ID se do veřejného repa necommituje. Lokálně ho drží gitignorovaný
+`app/ios/Flutter/Team.xcconfig` (`DEVELOPMENT_TEAM = …`), který `Debug.xcconfig` a `Release.xcconfig`
+načítají přes `#include?`. CI ho dostává ze secretu `IOS_TEAM_ID`.

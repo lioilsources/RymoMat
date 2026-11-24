@@ -53,3 +53,9 @@ a básníka (reálný telefon, TestFlight, dogfooding).
 
 - Citace jsou v RhymeSheetu už v M1 (plán je řadí do M2); Rýmovník je potřebuje tak jako tak.
 - Režim schématu, obarvení skupin, asonance v UI, historie verzí a `meta.json` jsou M2.
+
+## Doplněno 2026-11-24
+
+- Ikona: vektorový symbol (tři verše, jantarový oblouk spojuje rýmující se konce), zdroj
+  `app/assets/icon/icon.svg`, generuje `flutter_launcher_icons`; `docs/icon.png` pro Pages.
+- Rozhodnutí z M0 (`dá/má`, pravidlo `-ie → -ije`, MIT) jsou zapracovaná, viz `M0_REPORT.md`.

@@ -30,3 +30,4 @@ packages/rymo_editor/pubspec.lock
 app/lib/l10n/app_localizations*.dart
 # bundled rhyme pack: run/rymo release cs, then copy (see README)
 app/assets/packs/*.zip
+app/ios/Flutter/Team.xcconfig
