@@ -29,7 +29,11 @@ def g2p(w, before_pause=True):
             i += 1; continue
         if c in "ií" and out and out[-1] in SOFT:      # written i/í only, never y/ý
             out[-1] = SOFT[out[-1]]
-        out.append(LET.get(c, c)); i += 1
+        out.append(LET.get(c, c))
+        # hiatus glide: consonant + i/í + vowel -> ij (melodie -> meloDije)
+        if c in "ií" and len(out) >= 2 and out[-2] not in VOW and i+1 < len(w) and w[i+1] in "aáeéěíoóuúů":
+            out.append("j")
+        i += 1
     # geminates
     ph = []
     for p in out:
@@ -78,13 +82,15 @@ def classify(a, b):
         return "masc" if ka["syl"] == 1 and kb["syl"] == 1 else "weak"
     if ka["f2"] and kb["f2"] and ka["f2"].translate(FOLD) == kb["f2"].translate(FOLD): return "looseFull"
     if ka["f1"].translate(FOLD) == kb["f1"].translate(FOLD) and ka["open"] == kb["open"]: return "loose"
+    # open monosyllables, same vowel, different onset (dá/má) -> loose
+    if ka["open"] and kb["open"] and ka["syl"] == 1 and kb["syl"] == 1 and ka["f1"][-1].translate(FOLD) == kb["f1"][-1].translate(FOLD): return "loose"
     if ka["as2"] and ka["as2"] == kb["as2"]: return "assonance"
     return "none"
 
 vec = dict(led="let", hrad="hrat", hvozd="hvost", sníh="sNIx", hřích="hRIx", oběd="objet", město="mNesto",
   dítě="DITe", děti="DeTi", chata="xata", kdo="gdo", vstát="fstAt", sbor="zbor", shoda="sxoda", tužka="tuSka",
   zpěv="spjef", mouka="mWka", taxi="taksi", být="bIt", bít="bIt", vůz="vUs", krk="krk", dým="dIm", ticho="Tixo",
-  tykev="tikef", lev="lef", svět="svjet", mráz="mrAs")
+  tykev="tikef", lev="lef", svět="svjet", mráz="mrAs", melodie="meloDije", marie="marije", poesií="poesijI")
 bad = [(w, g2p(w), e) for w, e in vec.items() if g2p(w) != e]
 print("G2P vectors:", len(vec) - len(bad), "/", len(vec), "ok", bad)
 
@@ -94,7 +100,7 @@ print("syllables:", len(syl) - len(bads), "/", len(syl), "ok", bads)
 
 cls = [("být","bít","identical"),("láska","páska","full"),("voda","svoboda","full"),("hrad","sad","masc"),
   ("hvozd","most","masc"),("voda","věda","weak"),("děti","letí","looseFull"),("mráz","hlas","loose"),
-  ("láska","dáma","assonance"),("voda","ryba","none"),("sníh","hřích","masc"),("led","let","identical"),("oběd","hned","masc")]
+  ("láska","dáma","assonance"),("voda","ryba","none"),("sníh","hřích","masc"),("led","let","identical"),("oběd","hned","masc"),("dá","má","loose"),("jsou","svou","loose")]
 badc = [(a, b, classify(a, b), e) for a, b, e in cls if classify(a, b) != e]
 print("classification:", len(cls) - len(badc), "/", len(cls), "ok", badc)
 for w in ["voda","láska","hrad","děti","krk"]:

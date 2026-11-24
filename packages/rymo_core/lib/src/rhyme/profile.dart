@@ -102,7 +102,17 @@ class CzechProfile extends RhymeProfile {
     if (fold(ka.f1) == fold(kb.f1) && ka.open == kb.open) {
       return RhymeLevel.loose;
     }
+    if (_openMonoRhyme(ka, kb)) return RhymeLevel.loose;
     if (ka.as2 != null && ka.as2 == kb.as2) return RhymeLevel.assonance;
     return RhymeLevel.none;
   }
+
+  /// Open monosyllables with the same vowel but a different onset
+  /// (dá/má, jsou/svou) count as loose rhymes (owner decision after M0).
+  static bool _openMonoRhyme(RhymeKeys ka, RhymeKeys kb) =>
+      ka.open &&
+      kb.open &&
+      ka.syl == 1 &&
+      kb.syl == 1 &&
+      foldCz(ka.f1[ka.f1.length - 1]) == foldCz(kb.f1[kb.f1.length - 1]);
 }

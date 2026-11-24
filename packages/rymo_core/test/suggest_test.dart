@@ -24,6 +24,9 @@ void main() {
         LexEntry('dáma', 70, lemma: 'dáma', tag: 'NNFS1-----A----'),
         LexEntry('voda', 900),
         LexEntry('ryba', 100),
+        LexEntry('dá', 400),
+        LexEntry('zná', 300),
+        LexEntry('tvá', 200),
       ],
       pairs: const [PairEntry('láska', 'otázka', 7, 3)],
       cites: const [
@@ -86,6 +89,16 @@ void main() {
     );
     expect(res.map((s) => s.word), contains('dáma'));
     expect(res.firstWhere((s) => s.word == 'páska').used, isTrue);
+    core.close();
+  });
+
+  test('open monosyllables rhyme across onsets (dá/má)', () {
+    final core = SuggestCore.open(pack);
+    final res = core.suggest(const SuggestQuery('to je má'));
+    final words = res.map((s) => s.word).toList();
+    expect(words, containsAll(['dá', 'zná', 'tvá']));
+    expect(words, isNot(contains('voda')));
+    expect(res.every((s) => s.level == RhymeLevel.loose), isTrue);
     core.close();
   });
 

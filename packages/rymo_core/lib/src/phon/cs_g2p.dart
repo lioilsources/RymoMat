@@ -28,6 +28,7 @@ class CzechG2P {
     'ň': 'N',
   };
   static const _soft = {'d': 'D', 't': 'T', 'n': 'N'};
+  static const _vowelLetters = 'aáeéěíoóuúů';
   static final _nonLetter = RegExp(r'[^\p{L}]', unicode: true);
 
   /// Lowercase and strip everything except letters.
@@ -105,6 +106,14 @@ class CzechG2P {
         if (s != null) out[out.length - 1] = s;
       }
       out.add(_letters[c] ?? c);
+      // Hiatus glide: consonant + i/í + vowel -> ij (melodie -> meloDije).
+      if ((c == 'i' || c == 'í') &&
+          out.length >= 2 &&
+          !isCzVowel(out[out.length - 2]) &&
+          i + 1 < w.length &&
+          _vowelLetters.contains(w[i + 1])) {
+        out.add('j');
+      }
       i++;
     }
 

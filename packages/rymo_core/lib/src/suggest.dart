@@ -160,6 +160,20 @@ class SuggestCore {
         loose.addAll(pack.wordsInFam(lvl, fam.id, 200).map((w) => (w, 0)));
       }
     }
+    // Open monosyllables with another onset (dá/má): probe `C + vowel`.
+    if (tk.open && tk.syl == 1 && tk.f1.length == 2) {
+      final v = profile.fold(tk.f1[1]);
+      for (final c in _consonants.split('')) {
+        for (final key in {c + v, ..._variants(c + v)}) {
+          if (key == tk.f1) continue;
+          final fam = pack.fam(FamLevel.f1, key);
+          if (fam == null) continue;
+          loose.addAll(
+            pack.wordsInFam(FamLevel.f1, fam.id, 60).map((w) => (w, 0)),
+          );
+        }
+      }
+    }
     layer(loose);
     // e) assonance
     if (q.assonance && tk.as2 != null) {
@@ -231,6 +245,8 @@ class SuggestCore {
             : Citation(c.lineA, c.lineB, c.author, c.work, c.year),
     ];
   }
+
+  static const _consonants = 'pbtdTDkgfvszSZxhcC34mnNlrRj';
 
   static String _tail(String w) =>
       w.length >= 3 ? w.substring(w.length - 3) : w;

@@ -85,3 +85,15 @@ run/rymo fetch kcv && run/rymo fetch freqwords-cs
 run/rymo normalize kcv && run/rymo lexicon cs && run/rymo pairs cs
 run/rymo pack cs && run/rymo eval cs && run/rymo release cs
 ```
+
+## Rozhodnutí Ol1na (2026-11-24)
+
+1. **`dá/má` = `loose`.** Otevřené jednoslabičné konce se stejnou samohláskou (bez ohledu na délku)
+   a jinou opěrnou souhláskou jsou volný rým. `CzechProfile.classify` i prototyp; `suggest` je
+   nabízí ve vrstvě d) (sonduje rodiny `souhláska + samohláska`).
+2. **Pravidlo `i + samohláska → ij`** v G2P (souhláska + `i/í` + samohláska kromě `i y ý`):
+   `melodie → meloDije`, `marií → marijI`, ale `melodii → meloDii` (tak přepisuje KČV).
+   Golden test 99,66 % → **99,91 %**; tabulka výjimek 58 → 19 tvarů (zbyla cizí slova).
+   Doložené páry rozpoznané jako rým 96,4 % → **96,8 %** (výskyty 98,3 %).
+3. Licence kódu **MIT** (`LICENSE`); pack dál CC BY-SA 4.0.
+4. Otázky z §15: platí doporučené varianty plánu (název RymoMat, písně mimo, export A+B, …).
