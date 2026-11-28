@@ -42,7 +42,8 @@ cd app && flutter test integration_test -d <simulátor>          # celý tok s r
 - Testy nestahují nic ze sítě; fixtures jen volná díla (Mácha, Erben).
 - Pack se vydává pod CC BY-SA 4.0 s `ATTRIBUTION.md`.
 - Sbírky = YAML PoetryStreamu (`Notebook` v rymo_core); PoetryStream čte `title`, `poems[].title|author|text`.
-- Release workflowy jsou z repa Distribution; opravy patří tam. Odchylka: monorepo joby v `ci.yml`.
+- Release workflowy jsou z repa Distribution; opravy patří tam. Odchylka: monorepo joby v `ci.yml`,
+  stažení packu z `rymomat-packs` v `release-*.yml`.
 
 ## Kam dál
 Plán a milníky: `Prompts/00-RYMOMAT_PLAN.md`. Stav: `docs/M0_REPORT.md`, `docs/M1_REPORT.md`. Release: `docs/release.md`.

@@ -13,6 +13,9 @@ jobs:
   build-android:
     name: Build & Release Android
     runs-on: ubuntu-latest
+    env:
+      # Firebase step is skipped until the app exists in Firebase (project app limit).
+      FIREBASE_APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
 
     steps:
       - name: Checkout
@@ -34,6 +37,15 @@ jobs:
       - name: Install dependencies
         working-directory: app
         run: flutter pub get
+
+      - name: Fetch rhyme pack
+        # Pack is not in git (CC BY-SA data, 22 MB); pinned release of lioilsources/rymomat-packs.
+        env:
+          PACK_URL: https://github.com/lioilsources/rymomat-packs/releases/download/cs-v1/cs-v1.zip
+          PACK_SHA256: 570b6bdda2fba4914b3bf688b7ff6dbb4706cbc358e26750d31d6051ad012f1c
+        run: |
+          curl -fsSL -o app/assets/packs/cs-v1.zip "$PACK_URL"
+          echo "$PACK_SHA256  app/assets/packs/cs-v1.zip" | shasum -a 256 -c -
 
       - name: Set version from tag
         working-directory: app
@@ -89,6 +101,7 @@ jobs:
           prerelease: true
 
       - name: Upload to Firebase App Distribution
+        if: env.FIREBASE_APP_ID != ''
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
